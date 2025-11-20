@@ -1,69 +1,44 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kiểm tra vị trí</title>
-<style>
-    body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
-    .loading { color: #555; }
-    .success { color: green; font-size: 20px; }
-    .error { color: red; font-size: 20px; }
-</style>
+  <meta charset='UTF-8'>
+  <title>Kiểm tra vị trí trước khi truy cập Form</title>
 </head>
 <body>
 <h2>Đang kiểm tra vị trí...</h2>
-<p class="loading">Vui lòng chờ...</p>
+<div id='result'></div>
 
 <script>
-function checkLocation() {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(success, error);
-    } else {
-        document.body.innerHTML = "<h2 class='error'>Thiết bị không hỗ trợ định vị.</h2>";
-    }
+// Tọa độ trung tâm
+const centerLat = 15.573; // Vĩ độ trung tâm
+const centerLon = 108.474; // Kinh độ trung tâm
+const radius = 700; // Bán kính cho phép (mét)
+const redirectUrl = 'https://forms.office.com/e/VTdiDmu13x?origin=lprLink';
+
+// Hàm tính khoảng cách giữa hai điểm theo công thức Haversine
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371000; // Bán kính Trái Đất (m)
+  const toRad = deg => deg * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-function success(position) {
-    const userLat = position.coords.latitude;
-    const userLng = position.coords.longitude;
-
-    // Vị trí trung tâm cho phép (tọa độ của bạn)
-    const allowedLat = 15.627784;
-    const allowedLng = 108.473313;
-
-    // Bán kính cho phép (mét)
-    const radius = 500;
-
-    const distance = getDistance(userLat, userLng, allowedLat, allowedLng);
-
-    if (distance <= radius) {
-        document.body.innerHTML = "<h2 class='success'>✅ Bạn ở trong khu vực cho phép! Đang chuyển hướng...</h2>";
-        setTimeout(() => {
-            window.location.href = "https://forms.office.com/e/9LaRaxBNa0?origin=lprLink";
-        }, 2000);
-    } else {
-        document.body.innerHTML = "<h2 class='error'>❌ Bạn không ở trong khu vực cho phép.</h2>";
-    }
-}
-
-function error() {
-    document.body.innerHTML = "<h2 class='error'>Không thể lấy vị trí. Vui lòng bật GPS và cho phép truy cập vị trí.</h2>";
-}
-
-// Hàm tính khoảng cách giữa 2 điểm (Haversine formula)
-function getDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371000; // bán kính Trái Đất (m)
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-}
-
-checkLocation();
+// Lấy vị trí người dùng
+navigator.geolocation.getCurrentPosition(pos => {
+  const lat = pos.coords.latitude;
+  const lon = pos.coords.longitude;
+  const distance = haversine(centerLat, centerLon, lat, lon);
+  if (distance <= radius) {
+    document.getElementById('result').innerHTML = '<h3>✅ Trong phạm vi cho phép! Đang chuyển hướng...</h3>';
+    setTimeout(() => { window.location.href = redirectUrl; }, 2000);
+  } else {
+    document.getElementById('result').innerHTML = '<h3>❌ Ngoài phạm vi 700m! Không thể truy cập Form.</h3>';
+  }
+}, err => {
+  document.getElementById('result').innerHTML = 'Không lấy được vị trí! Vui lòng bật GPS.';
+});
 </script>
 </body>
 </html>
