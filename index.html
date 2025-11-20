@@ -7,17 +7,16 @@
 <body>
 <h2>Đang kiểm tra vị trí...</h2>
 <div id='result'></div>
+<div id='coords'></div>
 
 <script>
-// Tọa độ trung tâm
-const centerLat = 15.573; // Vĩ độ trung tâm
-const centerLon = 108.474; // Kinh độ trung tâm
-const radius = 700; // Bán kính cho phép (mét)
+const centerLat = 15.62809;
+const centerLon = 108.473148;
+const radius = 700;
 const redirectUrl = 'https://forms.office.com/e/VTdiDmu13x?origin=lprLink';
 
-// Hàm tính khoảng cách giữa hai điểm theo công thức Haversine
 function haversine(lat1, lon1, lat2, lon2) {
-  const R = 6371000; // Bán kính Trái Đất (m)
+  const R = 6371000;
   const toRad = deg => deg * Math.PI / 180;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
@@ -25,16 +24,16 @@ function haversine(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-// Lấy vị trí người dùng
 navigator.geolocation.getCurrentPosition(pos => {
   const lat = pos.coords.latitude;
   const lon = pos.coords.longitude;
+  document.getElementById('coords').innerHTML = `<p>Tọa độ hiện tại: ${lat}, ${lon}</p>`;
   const distance = haversine(centerLat, centerLon, lat, lon);
   if (distance <= radius) {
     document.getElementById('result').innerHTML = '<h3>✅ Trong phạm vi cho phép! Đang chuyển hướng...</h3>';
     setTimeout(() => { window.location.href = redirectUrl; }, 2000);
   } else {
-    document.getElementById('result').innerHTML = '<h3>❌ Ngoài phạm vi 700m! Không thể truy cập Form.</h3>';
+    document.getElementById('result').innerHTML = `<h3>❌ Ngoài phạm vi 700m! Không thể truy cập Form.</h3>`;
   }
 }, err => {
   document.getElementById('result').innerHTML = 'Không lấy được vị trí! Vui lòng bật GPS.';
