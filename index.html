@@ -1,43 +1,74 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
-  <meta charset='UTF-8'>
-  <title>Kiểm tra vị trí trước khi truy cập Form</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tự động kiểm tra vị trí</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#0f172a;color:#e5e7eb;margin:0;padding:0;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center}
+    .info{max-width:600px;padding:20px;background:#111827;border-radius:12px;border:1px solid #1f2937}
+    .error{color:#fca5a5}
+    .muted{color:#9ca3af;font-size:14px}
+  </style>
 </head>
 <body>
-<h2>Đang kiểm tra vị trí...</h2>
-<div id='result'></div>
-<div id='coords'></div>
+  <div class="info">
+    <h1>Đang kiểm tra vị trí...</h1>
+    <p id="status" class="muted">Vui lòng chờ trong giây lát.</p>
+    <p id="details" class="muted" style="white-space:pre-wrap"></p>
+  </div>
 
 <script>
-const centerLat = 15.62809;
-const centerLon = 108.473148;
-const radius = 700;
-const redirectUrl = 'https://forms.office.com/e/VTdiDmu13x?origin=lprLink';
+const FORM_URL = 'https://forms.office.com/e/9LaRaxBNa0?origin=lprLink';
+const LOCATIONS = [
+  { name: 'Điểm 1', lat: 15.628081833909635, lon: 108.473078307539300 },
+  { name: 'Điểm 2', lat: 16.041381089995510, lon: 108.210097309485960 }
+];
+const RADIUS_METERS = 500;
 
-function haversine(lat1, lon1, lat2, lon2) {
+const statusEl = document.getElementById('status');
+const detailsEl = document.getElementById('details');
+
+function toRad(deg){ return deg * Math.PI / 180; }
+function haversine(lat1, lon1, lat2, lon2){
   const R = 6371000;
-  const toRad = deg => deg * Math.PI / 180;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
-  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
+  const c = 2 * Math.asin(Math.sqrt(a));
+  return R * c;
 }
 
-navigator.geolocation.getCurrentPosition(pos => {
-  const lat = pos.coords.latitude;
-  const lon = pos.coords.longitude;
-  document.getElementById('coords').innerHTML = `<p>Tọa độ hiện tại: ${lat}, ${lon}</p>`;
-  const distance = haversine(centerLat, centerLon, lat, lon);
-  if (distance <= radius) {
-    document.getElementById('result').innerHTML = '<h3>✅ Trong phạm vi cho phép! Đang chuyển hướng...</h3>';
-    setTimeout(() => { window.location.href = redirectUrl; }, 2000);
-  } else {
-    document.getElementById('result').innerHTML = `<h3>❌ Ngoài phạm vi 700m! Không thể truy cập Form.</h3>`;
+async function getPosition(){
+  return new Promise((resolve, reject)=>{
+    if(!navigator.geolocation){ return reject(new Error('Trình duyệt không hỗ trợ Geolocation.')); }
+    navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+  });
+}
+
+async function autoCheck(){
+  try{
+    const pos = await getPosition();
+    const { latitude, longitude, accuracy } = pos.coords;
+    const distances = LOCATIONS.map(loc => ({ name: loc.name, meters: haversine(latitude, longitude, loc.lat, loc.lon) }));
+    const nearest = distances.reduce((a,b)=> a.meters < b.meters ? a : b);
+    const ok = nearest.meters <= RADIUS_METERS;
+
+    detailsEl.textContent = `Vị trí: lat=${latitude.toFixed(6)}, lon=${longitude.toFixed(6)}, chính xác ~${Math.round(accuracy)}m\n`+
+      distances.map(d=>`• ${d.name}: ${Math.round(d.meters)}m`).join('\n');
+
+    if(ok){
+      statusEl.textContent = `Hợp lệ (≤ ${RADIUS_METERS}m). Đang chuyển đến biểu mẫu...`;
+      window.location.replace(FORM_URL);
+    } else {
+      statusEl.innerHTML = `<span class='error'>Ngoài phạm vi: cách ${nearest.name} ~ ${Math.round(nearest.meters)}m (> ${RADIUS_METERS}m).</span>`;
+    }
+  } catch(err){
+    statusEl.innerHTML = `<span class='error'>Lỗi: ${err.message}</span>`;
   }
-}, err => {
-  document.getElementById('result').innerHTML = 'Không lấy được vị trí! Vui lòng bật GPS.';
-});
+}
+
+autoCheck();
 </script>
 </body>
 </html>
