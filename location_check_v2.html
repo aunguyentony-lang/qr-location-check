@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kiểm tra vị trí – Nhiều địa điểm</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <!-- Leaflet CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <style>
+    :root { --bg:#0b132b; --card:#1c2541; --pri:#5bc0be; --txt:#e0e6f1; --muted:#a3b3c2; }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial,'Noto Sans',sans-serif;background:var(--bg);color:var(--txt)}
+    header{padding:24px 20px;text-align:center;border-bottom:1px solid #223056}
+    h1{margin:0 0 4px;font-size:24px}
+    h2{margin:0;font-size:14px;color:var(--muted);font-weight:500}
+    main{display:grid;grid-template-columns:360px 1fr;gap:16px;padding:16px}
+    @media (max-width: 900px){ main{grid-template-columns:1fr} }
+    .panel{background:var(--card);border:1px solid #223056;border-radius:12px;overflow:hidden}
+    .panel .body{padding:16px}
+    label{display:block;font-weight:600;margin:8px 0 6px}
+    input,textarea,select,button{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #2a3a66;background:#11182d;color:var(--txt)}
+    button{background:var(--pri);color:#0b132b;border:none;font-weight:700;cursor:pointer}
+    button:hover{filter:brightness(1.05)}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .list{max-height:280px;overflow:auto;margin-top:10px;border:1px dashed #2a3a66;border-radius:10px}
+    .list-item{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px dashed #2a3a66}
+    .badge{background:#0e1a36;color:var(--pri);padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid #2a3a66}
+    #map{height:520px}
+    .muted{color:var(--muted);font-size:12px}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Kiểm tra vị trí</h1>
+    <h2>Thêm nhiều địa điểm và xem trên bản đồ</h2>
+  </header>
+  <main>
+    <section class="panel">
+      <div class="body">
+        <form id="location-form">
+          <label for="name">Tên địa điểm</label>
+          <input id="name" name="name" placeholder="VD: Văn phòng Tam Kỳ" required />
+
+          <div class="row">
+            <div>
+              <label for="lat">Vĩ độ (lat)</label>
+              <input id="lat" name="lat" type="number" step="any" placeholder="15.573" required />
+            </div>
+            <div>
+              <label for="lng">Kinh độ (lng)</label>
+              <input id="lng" name="lng" type="number" step="any" placeholder="108.474" required />
+            </div>
+          </div>
+
+          <label for="desc">Ghi chú (tuỳ chọn)</label>
+          <textarea id="desc" name="desc" rows="2" placeholder="Thông tin thêm…"></textarea>
+
+          <div class="row" style="margin-top:10px">
+            <button type="submit">➕ Thêm địa điểm</button>
+            <button type="button" id="use-geo">📍 Lấy toạ độ hiện tại</button>
+          </div>
+          <p class="muted" style="margin-top:8px">Mẹo: Bạn có thể nhập trực tiếp toạ độ lat/lng hoặc bấm vào bản đồ để lấy toạ độ.</p>
+        </form>
+
+        <div class="list" id="location-list" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div id="map"></div>
+    </section>
+  </main>
+
+  <!-- Leaflet JS -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  >
+    addLocation('Địa điểm mới', 16.04140620523989, 108.21016802158452, 'Được thêm theo yêu cầu');
+
+</script>
+  <script>
+    // Khởi tạo bản đồ
+    const map = L.map('map').setView([15.573, 108.474], 12); // Tam Kỳ mặc định
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    const markers = [];
+
+    function addLocation(name, lat, lng, desc=''){
+      const m = L.marker([lat, lng]).addTo(map).bindPopup(`<strong>${name}</strong><br/>${desc || ''}`);
+      markers.push(m);
+      // Cập nhật danh sách
+      const list = document.getElementById('location-list');
+      const item = document.createElement('div');
+      item.className = 'list-item';
+      item.innerHTML = `<span class="badge">${markers.length}</span><div><div><strong>${name}</strong></div><div class="muted">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>${desc?`<div>${desc}</div>`:''}</div>`;
+      list.appendChild(item);
+      // Điều hướng bản đồ
+      map.setView([lat, lng], Math.max(map.getZoom(), 13));
+    }
+
+    // Cho phép bấm vào bản đồ để tự động điền lat/lng
+    map.on('click', (e)=>{
+      document.getElementById('lat').value = e.latlng.lat.toFixed(6);
+      document.getElementById('lng').value = e.latlng.lng.toFixed(6);
+    });
+
+    // Lấy toạ độ hiện tại
+    document.getElementById('use-geo').addEventListener('click', ()=>{
+      if (!navigator.geolocation){
+        alert('Trình duyệt không hỗ trợ Geolocation');
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(pos=>{
+        const {latitude, longitude} = pos.coords;
+        document.getElementById('lat').value = latitude.toFixed(6);
+        document.getElementById('lng').value = longitude.toFixed(6);
+        map.setView([latitude, longitude], 15);
+      }, err => alert('Không lấy được vị trí: '+ err.message));
+    });
+
+    // Xử lý form thêm địa điểm
+    document.getElementById('location-form').addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const name = document.getElementById('name').value.trim();
+      const lat = parseFloat(document.getElementById('lat').value);
+      const lng = parseFloat(document.getElementById('lng').value);
+      const desc = document.getElementById('desc').value.trim();
+      if (!name || isNaN(lat) || isNaN(lng)){
+        alert('Vui lòng nhập tên và toạ độ hợp lệ.');
+        return;
+      }
+      addLocation(name, lat, lng, desc);
+      e.target.reset();
+    });
+
+    // (Tuỳ chọn) Khởi tạo sẵn 1 địa điểm từ file gốc nếu cần
+    // Ví dụ: Văn phòng Tam Kỳ
+    addLocation('Văn phòng Tam Kỳ', 15.573000, 108.474000, 'Địa điểm mặc định');
+  
+    addLocation('Địa điểm mới', 16.04140620523989, 108.21016802158452, 'Được thêm theo yêu cầu');
+
+</script>
+</body>
+</html>
